@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class SysmacSolution:
     def __init__(self, solutions_path, uuid):
-        self.solutions_path = Path(solutions_path) / uuid if uuid else Path(solutions_path)
+        self.solutions_path = Path(solutions_path)
         self._uuid = uuid
         self._name = ''
         self._author = ''
@@ -213,7 +213,7 @@ class SysmacSolution:
 
 
 def get_solutions(solutions_path: str | bytes | PathLike) -> List[SysmacSolution]:
-    solutions = [SysmacSolution(solutions_path, s.stem) for s in Path(solutions_path).glob('*/')]
+    solutions = [SysmacSolution(f"{solutions_path}/{s.stem}", s.stem) for s in Path(solutions_path).glob('*/')]
     # Sort the project by last modification date by descending (most recently modified first)
     return sorted(solutions, key=lambda x: x.last_modified, reverse=True)
 

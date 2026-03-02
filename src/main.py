@@ -64,6 +64,7 @@ class AppUi(tk.Tk):
         content_frame.pack(fill=tk.BOTH, expand=True)
         main_frm.pack(fill=tk.BOTH, expand=True)
 
+        self.solutions = dict()
         self.__check_result_queue()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
@@ -153,6 +154,7 @@ class AppUi(tk.Tk):
             command = 'get_solutions'
             cmd_args = (input_path,)
             self.task_queue.put((command, cmd_args))
+            self.solutions.clear()
 
             self.status_bar.set_text(f'Looking for projects in {input_path}. Please wait ...')
             self.settings.set('general', 'solution_path', input_path)
@@ -163,6 +165,7 @@ class AppUi(tk.Tk):
             while True:
                 message, data = self.result_queue.get_nowait()
                 if message == 'get_solutions':
+                    self.solutions = {solution.uuid: solution for solution in data}
                     self.projects_tv.update_projects(data)
                     self.status_bar.set_text(f'{len(data)} projects found')
                 elif message == 'get_vars_from_solution':
@@ -210,7 +213,7 @@ class AppUi(tk.Tk):
         solutions_path = self.path_entry_var.get()
         project_uuid = self.projects_tv.item(tv_selection[0], "text")
         command = 'get_vars_from_solution'
-        cmd_args = (solutions_path, project_uuid)
+        cmd_args = (self.solutions[project_uuid].solutions_path, project_uuid)
         self.task_queue.put((command, cmd_args))
         self.projects_tv.disable_selection()
 
