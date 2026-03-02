@@ -1,3 +1,4 @@
+import re
 
 from internal_types import *
 
@@ -92,6 +93,8 @@ class SysmacDataType:
         self.order = xml_element.get('Order')
         self.offset_type = xml_element.get('OffsetType')
 
+        self._parse_string(self.base_type)
+
         self.children = [SysmacDataType.import_from_xml(child_datatype_elmt, namespace=namespace, parent=self)
                          for child_datatype_elmt in xml_element.findall(".//DataType")]
         return self
@@ -112,7 +115,16 @@ class SysmacDataType:
         self.is_controller_defined_type = False
         self.order = None
         self.offset_type = None
+
+        self._parse_string(self.base_type)
+
         return self
+
+    def _parse_string(self, base_type: str):
+        string_match = re.match(r"STRING\[(\d+)\]", self.base_type, re.IGNORECASE)
+        if string_match:
+            self.length = string_match.group(1)
+            self.base_type = f'STRING({self.length})'
 
     @classmethod
     def import_from_xml(cls, xml_element, namespace=None, parent=None, prefix=None):
@@ -124,11 +136,15 @@ class SysmacDataType:
 
     @property
     def is_base_type(self):
-        return self.base_type in BASE_TYPES
+        return self.base_type in BASE_TYPES or self.is_string
 
     @property
     def is_internal_type(self):
         return self.base_type in INTERNAL_TYPES.keys()
+
+    @property
+    def is_string(self):
+        return self.base_type.startswith('STRING')
 
     @property
     def is_array(self):
