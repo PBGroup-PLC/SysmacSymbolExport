@@ -1,5 +1,6 @@
 import copy
 import logging
+import os.path
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from os import PathLike
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class SysmacSolution:
     def __init__(self, solutions_path, uuid):
-        self.solutions_path = Path(solutions_path)
+        self.solutions_path = Path(solutions_path) / uuid if uuid else Path(solutions_path)
         self._uuid = uuid
         self._name = ''
         self._author = ''
@@ -24,6 +25,8 @@ class SysmacSolution:
         self._last_modified = datetime.fromtimestamp(0)
         self.global_vars = []
 
+        if not os.path.exists(self.solutions_path / f'{self._uuid}.xml'):
+            self._set_uuid_from_solution(self.solutions_path)
         self._get_properties()
 
     @property
@@ -48,11 +51,11 @@ class SysmacSolution:
 
     def get_global_vars(self) -> List[SysmacDataType]:
         project_oem_file = f'{self._uuid}.oem'
-        tree = ET.parse(self.solutions_path / self._uuid / project_oem_file)
+        tree = ET.parse(self.solutions_path / project_oem_file)
         root = tree.getroot()
         global_vars_filename = root.find(".//Entity[@type='Variables'][@subtype='Global']").attrib.get('id')
         self.global_vars = [SysmacDataType.import_from_slwd(symbol)
-                            for symbol in parse_slwd(self.solutions_path / self._uuid / f"{global_vars_filename}.xml")]
+                            for symbol in parse_slwd(self.solutions_path / f"{global_vars_filename}.xml")]
         return self.global_vars
 
     def get_published_symbols(self) -> List[SysmacDataType]:
@@ -147,7 +150,7 @@ class SysmacSolution:
 
     def _get_data_types(self) -> Dict[str, SysmacDataType]:
         project_oem_file = f'{self._uuid}.oem'
-        tree = ET.parse(self.solutions_path / self._uuid / project_oem_file)
+        tree = ET.parse(self.solutions_path / project_oem_file)
         root = tree.getroot()
 
         dt = {}
@@ -162,7 +165,7 @@ class SysmacSolution:
 
     def _get_data_from_namespace(self, datatype_id, namespace=None) -> Dict[str, SysmacDataType]:
         datatype_file = f"{datatype_id}.xml"
-        tree = ET.parse(self.solutions_path / self._uuid / datatype_file)
+        tree = ET.parse(self.solutions_path / datatype_file)
         root = tree.getroot()
 
         data = get_struct_from_namespace(root, namespace)
@@ -171,19 +174,42 @@ class SysmacSolution:
 
     def _get_properties(self):
         try:
-            tree = ET.parse(self.solutions_path / self._uuid / f'{self._uuid}.xml')
+            tree = ET.parse(self.solutions_path / f'{self._uuid}.xml')
         except FileNotFoundError as e:
             return
         root = tree.getroot()
 
         self._project_type = root.find('.//ProjectType').text
         self._author = root.find('.//Author').text
-        self._last_modified = datetime.fromisoformat(root.find('.//DateModified').text)
+        date_last_modified = root.find('.//DateModified')
+        if date_last_modified:
+            self._last_modified = datetime.fromisoformat(date_last_modified.text)
 
-        tree = ET.parse(self.solutions_path / self._uuid / f'{self._uuid}.oem')
+        tree = ET.parse(self.solutions_path / f'{self._uuid}.oem')
         root = tree.getroot()
         solution_element = root.find(".//Entity[@type='Solution']")
         self._name = solution_element.attrib.get('name') if solution_element is not None else ''
+
+    def _set_uuid_from_solution(self, solution_dir: str | bytes | PathLike):
+        """Sets the UUID of this solution, based on its .oem filename.
+        Handles local solutions, temporary solutions and Team solutions.
+        Leaves UUID unchanged if none could be found"""
+
+        found_uuid = ""
+        candidates = (
+            Path(solution_dir),
+            (Path(solution_dir) / "Project"),
+        )
+
+        for candidate in candidates:
+            found_file = next(candidate.glob('*.oem'), None)
+            if not found_file:
+                continue
+
+            found_uuid = os.path.splitext(os.path.basename(found_file))[0]
+            self._uuid = found_uuid
+            self.solutions_path = candidate
+            break
 
 
 def get_solutions(solutions_path: str | bytes | PathLike) -> List[SysmacSolution]:
