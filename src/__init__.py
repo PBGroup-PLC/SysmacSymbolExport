@@ -21,6 +21,6 @@
 # SOFTWARE.
 #
 
-__version__ = '0.2.3a'
+__version__ = '0.2.3.1'
 __author__ = 'Loïc GRENON; Tom Veldman'
 APP_NAME = "SysmacSymbolExport"
