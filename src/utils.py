@@ -46,6 +46,16 @@ def get_enum_from_namespace(xml_root: ET.Element, namespace: str):
             data[f'{data_type.name}'] = data_type
     return data
 
+def get_union_from_namespace(xml_root: ET.Element, namespace: str):
+    data = {}
+    for type_def in xml_root.findall(".//DataType[@BaseType='UNION']"):
+        data_type = SysmacDataType.import_from_xml(type_def, namespace=namespace)
+        if data_type.namespace is not None:
+            data[f'{data_type.namespace}\\{data_type.name}'] = data_type
+        else:
+            data[f'{data_type.name}'] = data_type
+    return data
+
 def parse_slwd(file_path) -> List[Dict[str, str]]:
     variables = []
     with open(file_path, "r", encoding="utf-8") as file:

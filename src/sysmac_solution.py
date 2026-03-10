@@ -9,7 +9,7 @@ from typing import Dict, List
 
 from sysmac_array import SysmacArray
 from sysmac_data_type import SysmacDataType, get_internal_type
-from utils import parse_slwd, get_enum_from_namespace, get_struct_from_namespace
+from utils import parse_slwd, get_enum_from_namespace, get_struct_from_namespace, get_union_from_namespace
 
 
 logger = logging.getLogger(__name__)
@@ -124,7 +124,7 @@ class SysmacSolution:
                     s.base_type = 'DINT'
                     base_type_symbols.append(s)
                     continue
-                elif dt[s.base_type].is_struct:
+                elif dt[s.base_type].is_struct or dt[s.base_type].is_union:
                     for child in dt[s.base_type].children:
                         new_symbol = copy.deepcopy(child)
                         new_symbol.parent = None
@@ -170,6 +170,7 @@ class SysmacSolution:
 
         data = get_struct_from_namespace(root, namespace)
         data |= get_enum_from_namespace(root, namespace)
+        data |= get_union_from_namespace(root, namespace)
         return data
 
     def _get_properties(self):
