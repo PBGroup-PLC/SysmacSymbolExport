@@ -147,6 +147,10 @@ class SysmacDataType:
         return self.base_type.startswith('STRING')
 
     @property
+    def is_union(self):
+        return self.base_type == 'UNION'
+
+    @property
     def is_array(self):
         return self.base_type.startswith('ARRAY')
 
